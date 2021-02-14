@@ -18,9 +18,24 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the License for more information.
 #-----------------------------------------------------------------------
+cmake_minimum_required(VERSION 3.11)
 
-cmake_minimum_required(VERSION 3.2)
-project(BoostBuilder)
+# -- Platforms
+if(APPLE)
+    set(CMAKE_C_COMPILER "/usr/bin/clang" CACHE FILEPATH "C compiler")
+    set(CMAKE_CXX_COMPILER "/usr/bin/clang++" CACHE FILEPATH "C++ compiler")
+    set(CMAKE_OSX_ARCHITECTURES "x86_64" CACHE STRING "CPU type / architecture")
+endif()
+
+# -- Global options
+set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/../modules" CACHE PATH "Install directory")
+#set(CMAKE_CONFIGURATION_TYPES "Debug;Release;MinSizeRel;RelWithDebInfo" CACHE STRING "Build types")
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+project(BoostBuilder VERSION 1.71.0 LANGUAGES C CXX DESCRIPTION "Build Boost with CMake")
 
 #-----------------------------------------------------------------------
 # CORE CONFIGURE/BUILD OPTIONS
@@ -31,7 +46,7 @@ include(GNUInstallDirs)
 
 # Basic Boost Parameters
 set(Boost_MAJOR_VERSION 1)
-set(Boost_MINOR_VERSION 59)
+set(Boost_MINOR_VERSION 71)
 set(Boost_SUBMINOR_VERSION 0)
 set(Boost_VERSION "${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}.${Boost_SUBMINOR_VERSION}")
 
@@ -43,17 +58,22 @@ set(Boost_VERSION "${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}.${Boost_SUBMINO
 # running the bootstrap.sh script supplied with Boost as:
 #   ./bootstrap.sh --with-libraries=all --show-libraries
 set(Boost_INSTALLED_LIBRARIES
+  atomic
+  chrono
   date_time
   filesystem
   iostreams
   math
   program_options
   random
+  regex
   serialization
   system
   test
   thread
+  timer
   )
+
 set(Boost_CONFIGURE_ARGS )
 set(Boost_BUILD_ARGS )
 
@@ -62,15 +82,11 @@ set(Boost_BUILD_ARGS )
 #-----------------------------------------------------------------------
 # - Extra libraries - not complete, only most useful
 set(Boost_OPTIONAL_LIBRARIES
-  atomic
-  chrono
-  regex
-  timer
   log
   )
 
 foreach(_oplib ${Boost_OPTIONAL_LIBRARIES})
-  option(boost.${_oplib} "Build Boost.${_oplib} Library" OFF)
+  option(boost.${_oplib} "Build Boost.${_oplib} Library" ON)
   if(boost.${_oplib})
     list(APPEND Boost_INSTALLED_LIBRARIES ${_oplib})
   endif()
@@ -78,7 +94,7 @@ endforeach()
 
 #-----------------------------------------------------------------------
 # - Threading model
-option(boost.singlethread "Build Boost single threaded library variants" OFF)
+option(boost.singlethread "Build Boost single threaded library variants" ON)
 if(boost.singlethread)
   list(APPEND Boost_BUILD_ARGS "threading=multi,single")
 else()
@@ -87,7 +103,7 @@ endif()
 
 #-----------------------------------------------------------------------
 # - Static libraries
-option(boost.staticlibs "Build Boost static library variants" OFF)
+option(boost.staticlibs "Build Boost static library variants" ON)
 if(boost.staticlibs)
   list(APPEND Boost_BUILD_ARGS "link=shared,static")
 else()
@@ -103,7 +119,7 @@ endif()
 # without patching
 set(__boost.buildmodes "variant=release")
 
-option(boost.debuglibs "Build Boost debug library variants" OFF)
+option(boost.debuglibs "Build Boost debug library variants" ON)
 if(boost.debuglibs)
   set(__boost.buildmodes "${__boost.buildmodes},debug")
 endif()
@@ -159,9 +175,26 @@ endif()
 # Build Boost
 #
 include(ExternalProject)
+# Original version:
+# URL                 "https://downloads.sourceforge.net/project/boost/boost/1.59.0/boost_1_59_0.tar.bz2"
+# URL_HASH            SHA256=727a932322d94287b62abb1bd2d41723eec4356a7728909e38adb65ca25241ca
+set(Boost_TARGZ_LOCAL "${PROJECT_SOURCE_DIR}/boost_1_71_0.tar.gz" CACHE FILEPATH "Manually downloaded Boost source .tar.gz file")
+set(Boost_TARGZ_URL "https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.gz" CACHE STRING "The Boost source download link")
+set(Boost_TARGZ_SHA256 "SHA256=96b34f7468f26a141f6020efb813f1a2f3dfb9797ecf76a7d7cbd843cc95f5bd" CACHE STRING "The Boost source archive checksum")
+
+set(Boost_TARGZ_SPEC ${Boost_TARGZ_URL})
+if(Boost_TARGZ_LOCAL)
+    if(EXISTS "${Boost_TARGZ_LOCAL}")
+        message(STATUS "[+] Using local source tar ball: ${Boost_TARGZ_LOCAL}.")
+        set(Boost_TARGZ_SPEC ${Boost_TARGZ_LOCAL})
+    else()
+        message(WARNING "[!] The local source tar ball ${Boost_TARGZ_LOCAL} does not exist, will try downloading.")
+    endif()
+endif()
+
 ExternalProject_Add(boost
-  URL                 "https://downloads.sourceforge.net/project/boost/boost/1.59.0/boost_1_59_0.tar.bz2"
-  URL_HASH            SHA256=727a932322d94287b62abb1bd2d41723eec4356a7728909e38adb65ca25241ca
+  URL                 "${Boost_TARGZ_SPEC}"
+  URL_HASH            "${Boost_TARGZ_SHA256}"
 
   # If sourceforge downloads barf, copy by hand and stick it next to this
   #URL                 ${PROJECT_SOURCE_DIR}/boost_1_59_0.tar.bz2
