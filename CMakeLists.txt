@@ -93,7 +93,7 @@ endforeach()
 
 #-----------------------------------------------------------------------
 # - Threading model
-option(boost.singlethread "Build Boost single threaded library variants" ON)
+option(boost.singlethread "Build Boost single threaded library variants" OFF)
 if(boost.singlethread)
   list(APPEND Boost_BUILD_ARGS "threading=multi,single")
 else()
