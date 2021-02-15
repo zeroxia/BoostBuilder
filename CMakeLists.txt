@@ -18,24 +18,23 @@
 # implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the License for more information.
 #-----------------------------------------------------------------------
-cmake_minimum_required(VERSION 3.11)
 
-# -- Platforms
+cmake_minimum_required(VERSION 3.15)
+
+set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/../modules" CACHE PATH "Install directory")
+#set(CMAKE_CONFIGURATION_TYPES "Debug;Release;MinSizeRel;RelWithDebInfo" CACHE STRING "Build types")
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 if(APPLE)
     set(CMAKE_C_COMPILER "/usr/bin/clang" CACHE FILEPATH "C compiler")
     set(CMAKE_CXX_COMPILER "/usr/bin/clang++" CACHE FILEPATH "C++ compiler")
     set(CMAKE_OSX_ARCHITECTURES "x86_64" CACHE STRING "CPU type / architecture")
 endif()
 
-# -- Global options
-set(CMAKE_INSTALL_PREFIX "${CMAKE_SOURCE_DIR}/../modules" CACHE PATH "Install directory")
-#set(CMAKE_CONFIGURATION_TYPES "Debug;Release;MinSizeRel;RelWithDebInfo" CACHE STRING "Build types")
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED True)
-set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
-project(BoostBuilder VERSION 1.71.0 LANGUAGES C CXX DESCRIPTION "Build Boost with CMake")
+project(BoostBuilder)
 
 #-----------------------------------------------------------------------
 # CORE CONFIGURE/BUILD OPTIONS
@@ -45,9 +44,9 @@ include(BoostBuildUtility.cmake)
 include(GNUInstallDirs)
 
 # Basic Boost Parameters
-set(Boost_MAJOR_VERSION 1)
-set(Boost_MINOR_VERSION 71)
-set(Boost_SUBMINOR_VERSION 0)
+set(Boost_MAJOR_VERSION "1" CACHE STRING "Choose Boost major version")
+set(Boost_MINOR_VERSION "71" CACHE STRING "Choose Boost minor version")
+set(Boost_SUBMINOR_VERSION "0" CACHE STRING "Choose Boost patch version")
 set(Boost_VERSION "${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}.${Boost_SUBMINOR_VERSION}")
 
 # - List libraries to always build.
@@ -58,20 +57,16 @@ set(Boost_VERSION "${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}.${Boost_SUBMINO
 # running the bootstrap.sh script supplied with Boost as:
 #   ./bootstrap.sh --with-libraries=all --show-libraries
 set(Boost_INSTALLED_LIBRARIES
-  atomic
-  chrono
   date_time
   filesystem
   iostreams
   math
   program_options
   random
-  regex
   serialization
   system
   test
   thread
-  timer
   )
 
 set(Boost_CONFIGURE_ARGS )
@@ -82,6 +77,10 @@ set(Boost_BUILD_ARGS )
 #-----------------------------------------------------------------------
 # - Extra libraries - not complete, only most useful
 set(Boost_OPTIONAL_LIBRARIES
+  atomic
+  chrono
+  regex
+  timer
   log
   )
 
@@ -175,12 +174,23 @@ endif()
 # Build Boost
 #
 include(ExternalProject)
-# Original version:
-# URL                 "https://downloads.sourceforge.net/project/boost/boost/1.59.0/boost_1_59_0.tar.bz2"
-# URL_HASH            SHA256=727a932322d94287b62abb1bd2d41723eec4356a7728909e38adb65ca25241ca
-set(Boost_TARGZ_LOCAL "${PROJECT_SOURCE_DIR}/boost_1_71_0.tar.gz" CACHE FILEPATH "Manually downloaded Boost source .tar.gz file")
-set(Boost_TARGZ_URL "https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.gz" CACHE STRING "The Boost source download link")
-set(Boost_TARGZ_SHA256 "SHA256=96b34f7468f26a141f6020efb813f1a2f3dfb9797ecf76a7d7cbd843cc95f5bd" CACHE STRING "The Boost source archive checksum")
+
+## Boost source tarball
+if("${Boost_VERSION}" STREQUAL "1.59.0")
+    set(Boost_TARGZ_LOCAL "${PROJECT_SOURCE_DIR}/boost_1_59_0.tar.gz" CACHE FILEPATH "Manually downloaded Boost source .tar.gz file")
+    set(Boost_TARGZ_URL "https://downloads.sourceforge.net/project/boost/boost/1.59.0/boost_1_59_0.tar.bz2" CACHE STRING "The Boost source download link")
+    set(Boost_TARGZ_SHA256 "SHA256=727a932322d94287b62abb1bd2d41723eec4356a7728909e38adb65ca25241ca" CACHE STRING "The Boost source archive checksum")
+elseif("${Boost_VERSION}" STREQUAL "1.71.0")
+    set(Boost_TARGZ_LOCAL "${PROJECT_SOURCE_DIR}/boost_1_71_0.tar.gz" CACHE FILEPATH "Manually downloaded Boost source .tar.gz file")
+    set(Boost_TARGZ_URL "https://dl.bintray.com/boostorg/release/1.71.0/source/boost_1_71_0.tar.gz" CACHE STRING "The Boost source download link")
+    set(Boost_TARGZ_SHA256 "SHA256=96b34f7468f26a141f6020efb813f1a2f3dfb9797ecf76a7d7cbd843cc95f5bd" CACHE STRING "The Boost source archive checksum")
+elseif("${Boost_VERSION}" STREQUAL "1.72.0")
+    set(Boost_TARGZ_LOCAL "${PROJECT_SOURCE_DIR}/boost_1_72_0.tar.gz" CACHE FILEPATH "Manually downloaded Boost source .tar.gz file")
+    set(Boost_TARGZ_URL "https://dl.bintray.com/boostorg/release/1.72.0/source/boost_1_72_0.tar.gz" CACHE STRING "The Boost source download link")
+    set(Boost_TARGZ_SHA256 "SHA256=c66e88d5786f2ca4dbebb14e06b566fb642a1a6947ad8cc9091f9f445134143f" CACHE STRING "The Boost source archive checksum")
+else()
+    message(FATAL "Unhandled Boost version: ${Boost_VERSION}, please update this CMakeLists.txt")
+endif()
 
 set(Boost_TARGZ_SPEC ${Boost_TARGZ_URL})
 if(Boost_TARGZ_LOCAL)
@@ -188,7 +198,7 @@ if(Boost_TARGZ_LOCAL)
         message(STATUS "[+] Using local source tar ball: ${Boost_TARGZ_LOCAL}.")
         set(Boost_TARGZ_SPEC ${Boost_TARGZ_LOCAL})
     else()
-        message(WARNING "[!] The local source tar ball ${Boost_TARGZ_LOCAL} does not exist, will try downloading.")
+        message(WARNING "[!] Boost_TARGZ_LOCAL: ${Boost_TARGZ_LOCAL}: not exists, will try downloading.")
     endif()
 endif()
 
@@ -257,10 +267,11 @@ configure_file(
 
 # Step for installation of all the above, as required
 ExternalProject_Add_Step(boost install_cmake
-  COMMAND ${CMAKE_COMMAND} -E make_directory ${Boost_INSTALL_CMAKEDIR}
-  COMMAND ${CMAKE_COMMAND} -P ${PROJECT_BINARY_DIR}/BoostWriteCMakeImportFiles.cmake
-  COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_BINARY_DIR}/BoostConfig.cmake ${Boost_INSTALL_CMAKEDIR}
-  COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_BINARY_DIR}/BoostConfigVersion.cmake ${Boost_INSTALL_CMAKEDIR}
+  # NB: Boost itself will install CORRECT CMake configuration files, discard these custom ones.
+  #COMMAND ${CMAKE_COMMAND} -E make_directory ${Boost_INSTALL_CMAKEDIR}
+  #COMMAND ${CMAKE_COMMAND} -P ${PROJECT_BINARY_DIR}/BoostWriteCMakeImportFiles.cmake
+  #COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_BINARY_DIR}/BoostConfig.cmake ${Boost_INSTALL_CMAKEDIR}
+  #COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_BINARY_DIR}/BoostConfigVersion.cmake ${Boost_INSTALL_CMAKEDIR}
   DEPENDEES install
   DEPENDS   ${PROJECT_SOURCE_DIR}/BoostLibraryDepends.cmake.in
             ${PROJECT_BINARY_DIR}/BoostWriteCMakeImportFiles.cmake
